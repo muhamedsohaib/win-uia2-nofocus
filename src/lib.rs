@@ -519,7 +519,7 @@ mod windows_tests {
                     let mut last_err = None;
                     let mut created = None;
                     for attempt in 0..3 {
-                        let _guard = WINDOWS_UIA_TEST_LOCK
+                        let guard = WINDOWS_UIA_TEST_LOCK
                             .lock()
                             .unwrap_or_else(std::sync::PoisonError::into_inner);
                         match NoFocusUiaClient::new_mta() {
@@ -529,17 +529,14 @@ mod windows_tests {
                             }
                             Err(err) if err.is_transient_init_error() && attempt < 2 => {
                                 last_err = Some(err);
-                                drop(_guard);
+                                drop(guard);
                                 thread::sleep(Duration::from_millis(25));
                             }
                             Err(err) => panic!("unexpected UIA2 init error: {err}"),
                         }
                     }
                     created.unwrap_or_else(|| {
-                        panic!(
-                            "client creation failed after transient retries: {:?}",
-                            last_err
-                        )
+                        panic!("client creation failed after transient retries: {last_err:?}")
                     })
                 };
                 assert_eq!(client.auto_set_focus(), Ok(false));
